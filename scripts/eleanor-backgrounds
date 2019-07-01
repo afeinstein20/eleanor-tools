@@ -15,7 +15,7 @@ from scipy.signal import medfilt2d as mf
 from scipy.interpolate import interp1d
 from multiprocessing import Pool
 
-from eleanor import fill_grid
+from eleanor_tools import fill_grid
 
 # Pre-compute the low pass filter
 fc = 0.12

@@ -1,2 +1,9 @@
-nbsphinx
-ipykernel
+numpy
+scipy
+pybind11>=2.3
+astropy
+photutils
+fitsio
+tqdm
+scikit-learn
+eleanor
