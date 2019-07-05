@@ -144,7 +144,7 @@ def do_background(fn, fast=True, suffix="_bkg"):
         bkg = calc_2dbkg(fits[2].read(), tbl['QUALITY'], tbl['TSTART'],
                          fast=fast)
 
-    hdr["BACKGROUND"] = True
+    hdr["IS_BKG"] = True
     fitsio.write(new_filename, bkg, header=dict(hdr), clobber=True)
 
 def run_sector_camera_chip(base_dir, sector, camera, chip, threads=1,
