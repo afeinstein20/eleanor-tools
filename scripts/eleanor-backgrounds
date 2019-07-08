@@ -44,6 +44,8 @@ def do_pca(i, j, data, factor, q):
 
 
 def calc_2dbkg(flux, qual, time, fast=True):
+    flux = np.ascontiguousarray(flux, dtype=np.float64)
+
     q = qual == 0
 
     med = np.percentile(flux[:,:,:], 1, axis=(2))   # build a single frame in shape of detector. This was once the median image, not sure why it was changed
@@ -53,7 +55,7 @@ def calc_2dbkg(flux, qual, time, fast=True):
 
     modes = 21
     X = flux[g.mask][:, q]
-    pca = PCA(n_components=modes)
+    pca = PCA(n_components=modes, svd_solver="full")
     pca.fit(X)
     pv = pca.components_[0:modes]
 
