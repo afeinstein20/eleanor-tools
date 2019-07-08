@@ -179,6 +179,7 @@ def run_sector_camera_chip(base_dir, sector, camera, chip, threads=1,
 
 
 if __name__ == "__main__":
+    import sys
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -199,7 +200,7 @@ if __name__ == "__main__":
                         help='use the old slower version of the interpolation')
     args = parser.parse_args()
 
-    if args.sector < 0:
+    if args.sector <= 0:
         do_background(args.base_dir, fast=not args.slow, suffix=args.suffix)
         sys.exit(0)
 
