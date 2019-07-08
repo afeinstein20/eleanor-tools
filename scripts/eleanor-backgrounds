@@ -30,15 +30,18 @@ window += 0.08 * np.cos(4 * np.pi * n / (N - 1))
 sinc_func = sinc_func * window
 sinc_func = sinc_func / np.sum(sinc_func)
 
+
 def lowpass(vec):
     new_signal = np.convolve(vec, sinc_func)
     lns = len(new_signal)
     diff = int(np.abs(lns - len(vec))/2)  # low pass filter to remove high order modes
     return new_signal[diff:-diff]
 
+
 def do_pca(i, j, data, factor, q):
     xvals = np.dot(factor, data[i,j,:][q])
     return xvals
+
 
 def calc_2dbkg(flux, qual, time, fast=True):
     q = qual == 0
@@ -134,6 +137,7 @@ def calc_2dbkg(flux, qual, time, fast=True):
 
     return fout
 
+
 def do_background(fn, fast=True, suffix="_bkg"):
     base, ext = os.path.splitext(fn)
     new_filename = base + suffix + ext
@@ -146,6 +150,7 @@ def do_background(fn, fast=True, suffix="_bkg"):
 
     hdr["IS_BKG"] = True
     fitsio.write(new_filename, bkg, header=dict(hdr), clobber=True)
+
 
 def run_sector_camera_chip(base_dir, sector, camera, chip, threads=1,
                            fast=True, suffix="_bkg"):
@@ -193,6 +198,10 @@ if __name__ == "__main__":
     parser.add_argument('--suffix', type=str, default="_bkg",
                         help='use the old slower version of the interpolation')
     args = parser.parse_args()
+
+    if args.sector < 0:
+        do_background(args.base_dir, fast=not args.slow, suffix=args.suffix)
+        sys.exit(0)
 
     if args.camera is None:
         cameras = [1, 2, 3, 4]
