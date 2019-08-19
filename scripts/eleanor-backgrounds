@@ -123,6 +123,8 @@ def calc_2dbkg(flux, qual, time, fast=True):
 
 def do_background(fn, fast=True, suffix="_bkg"):
     base, ext = os.path.splitext(fn)
+    if base.endswith("_pc"):
+        base = base[:-3]
     new_filename = base + suffix + ext
 
     with fitsio.FITS(fn) as fits:
