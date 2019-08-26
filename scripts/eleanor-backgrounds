@@ -123,6 +123,8 @@ def calc_2dbkg(flux, qual, time, fast=True):
 
 def do_background(fn, fast=True, suffix="_bkg"):
     base, ext = os.path.splitext(fn)
+    if base.endswith("_pc"):
+        base = base[:-3]
     new_filename = base + suffix + ext
 
     with fitsio.FITS(fn) as fits:
@@ -141,7 +143,7 @@ def run_sector_camera_chip(base_dir, sector, camera, chip, threads=1,
                            "{0:d}-{1:d}".format(camera, chip))
     pattern = os.path.join(
         postdir,
-        "hlsp_eleanor_tess_ffi_postcard-s{0:04d}-{1:d}-{2:d}-cal-*-*[0-9].fits"
+        "hlsp_eleanor_tess_ffi_postcard-s{0:04d}-{1:d}-{2:d}-cal-*-*[0-9]_pc.fits"
         .format(sector, camera, chip))
 
     # pattern = os.path.join(postdir, "hlsp_eleanor_*.fits")

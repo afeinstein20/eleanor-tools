@@ -72,7 +72,7 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
             primary_header["CCD"], primary_header["IMAGTYPE"].strip())
     info_str = '{0}-{1}-{2}-{3}'.format(info[0], info[1], info[2], info[3])
 
-    outfn_fmt = "hlsp_eleanor_tess_ffi_postcard-{0}-{{0:04d}}-{{1:04d}}.fits"
+    outfn_fmt = "hlsp_eleanor_tess_ffi_postcard-{0}-{{0:04d}}-{{1:04d}}_tess_v1_pc.fits"    
     outfn_fmt = outfn_fmt.format(info_str)
     outfn_fmt = os.path.join(outdir, outfn_fmt).format
 
