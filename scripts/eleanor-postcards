@@ -72,7 +72,7 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
             primary_header["CCD"], primary_header["IMAGTYPE"].strip())
     info_str = '{0}-{1}-{2}-{3}'.format(info[0], info[1], info[2], info[3])
 
-    outfn_fmt = "hlsp_eleanor_tess_ffi_postcard-{0}-{{0:04d}}-{{1:04d}}.fits"
+    outfn_fmt = "hlsp_eleanor_tess_ffi_postcard-{0}-{{0:04d}}-{{1:04d}}_tess_v1_pc.fits"
     outfn_fmt = outfn_fmt.format(info_str)
     outfn_fmt = os.path.join(outdir, outfn_fmt).format
 
@@ -119,8 +119,11 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
     dn = os.path.dirname
     metadata_dir = os.path.join(dn(dn(os.path.abspath(__file__))),
                                 'metadata', 's{0:04d}'.format(s))
-    ffiindex = np.loadtxt(os.path.join(metadata_dir,
-                                       'cadences_s{0:04d}.txt'.format(s)))
+    if f.ffiindex is None:
+        ffiindex = np.loadtxt(os.path.join(metadata_dir,
+                                           'cadences_s{0:04d}.txt'.format(s)))
+    else:
+        ffiindex = f.ffiindex * 1
     sc_fn = os.path.join(metadata_dir, 'target_s{0:04d}.fits'.format(s))
 
     # We'll have the same primary HDU for each postcard - this will store the
