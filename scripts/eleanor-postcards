@@ -116,7 +116,8 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
                             order="F")
 
     s = int(sector[1::])
-    metadata_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    dn = os.path.dirname
+    metadata_dir = os.path.join(dn(dn(os.path.abspath(__file__))),
                                 'metadata', 's{0:04d}'.format(s))
     ffiindex = np.loadtxt(os.path.join(metadata_dir,
                                        'cadences_s{0:04d}.txt'.format(s)))
