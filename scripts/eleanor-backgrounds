@@ -47,7 +47,7 @@ def do_pca(i, j, data, factor, q):
 
 
 def calc_2dbkg(flux, qual, time, fast=True):
-    flux = np.ascontiguousarray(flux, dtype=np.float64)
+    flux = np.ascontiguousarray(np.moveaxis(flux, 0, -1), dtype=np.float64)
 
     q = qual == 0
 
@@ -132,7 +132,7 @@ def calc_2dbkg(flux, qual, time, fast=True):
         time[~q]
     )  # all times, where we've only been learning with the good quality cadences
 
-    return bkg_arr
+    return np.asfortranarray(np.moveaxis(bkg_arr, -1, 0), dtype=np.float32)
 
 
 def do_background(fn, fast=True, suffix="_bkg"):
