@@ -25,7 +25,7 @@ N = int(np.ceil((4 / b)))
 if not N % 2:
     N += 1
 n = np.arange(N)
-sinc_func = np.sinc(2 * fc * (n - (N - 1) / 2.))
+sinc_func = np.sinc(2 * fc * (n - (N - 1) / 2.0))
 window = 0.42 - 0.5 * np.cos(2 * np.pi * n / (N - 1))
 window += 0.08 * np.cos(4 * np.pi * n / (N - 1))
 sinc_func = sinc_func * window
@@ -35,17 +35,19 @@ sinc_func = sinc_func / np.sum(sinc_func)
 def lowpass(vec, axis=-1):
     new_signal = np.convolve(vec, sinc_func)
     lns = len(new_signal)
-    diff = int(np.abs(lns - len(vec))/2)  # low pass filter to remove high order modes
+    diff = int(
+        np.abs(lns - len(vec)) / 2
+    )  # low pass filter to remove high order modes
     return new_signal[diff:-diff]
 
 
 def do_pca(i, j, data, factor, q):
-    xvals = np.dot(factor, data[i,j,:][q])
+    xvals = np.dot(factor, data[i, j, :][q])
     return xvals
 
 
 def calc_2dbkg(flux, qual, time, fast=True):
-    flux = np.ascontiguousarray(flux, dtype=np.float64)
+    flux = np.ascontiguousarray(np.moveaxis(flux, 0, -1), dtype=np.float64)
 
     q = qual == 0
 
@@ -58,7 +60,7 @@ def calc_2dbkg(flux, qual, time, fast=True):
     med = med - medfilt2d(med, 25)
 
     # mask which should separate pixels dominated by starlight from background
-    g = np.ma.masked_where(med < np.percentile(med, 70.), med)
+    g = np.ma.masked_where(med < np.percentile(med, 70.0), med)
 
     modes = 21
     X = np.ascontiguousarray(flux[g.mask][:, q])
@@ -76,9 +78,9 @@ def calc_2dbkg(flux, qual, time, fast=True):
     for j, i in enumerate(rolls):
         if i != 0:
             if i > 0:
-                vv[i:, (j+1)*modes:(j+2)*modes] = pvT[:-i]
+                vv[i:, (j + 1) * modes : (j + 2) * modes] = pvT[:-i]
             else:
-                vv[:i, (j+1)*modes:(j+2)*modes] = pvT[-i:]
+                vv[:i, (j + 1) * modes : (j + 2) * modes] = pvT[-i:]
 
     vvT = vv.T
     factor = np.linalg.solve(np.dot(vvT, vv), vvT)
@@ -89,8 +91,11 @@ def calc_2dbkg(flux, qual, time, fast=True):
     data[:] = np.nan
     data[g.mask] = np.dot(X, factor.T, out=data[g.mask])
 
-    outmeasure = np.nansum(np.abs(data - np.nanmean(data, axis=(0, 1)))
-                           / np.nanstd(data, axis=(0, 1)), axis=-1)
+    outmeasure = np.nansum(
+        np.abs(data - np.nanmean(data, axis=(0, 1)))
+        / np.nanstd(data, axis=(0, 1)),
+        axis=-1,
+    )
 
     # these eigenvectors give a bad fit when something astrophysical happens
     # to these pixels, like a bright asteroid crossing the FOV. Isolate these
@@ -113,12 +118,21 @@ def calc_2dbkg(flux, qual, time, fast=True):
     bkg_arr[:, :, q] = np.dot(data, vv.T)
     for i in range(nx):
         for j in range(ny):
-            bkg_arr[i,j,q] = lowpass(bkg_arr[i,j,q])
+            bkg_arr[i, j, q] = lowpass(bkg_arr[i, j, q])
 
-    f = interp1d(time[q], bkg_arr[:, :, q], kind='linear', axis=2, bounds_error=False, fill_value='extrapolate') # then interpolate the background smoothly across
-    bkg_arr[:, :, ~q] = f(time[~q])                                                                                             # all times, where we've only been learning with the                                                                                             # good quality cadences
+    f = interp1d(
+        time[q],
+        bkg_arr[:, :, q],
+        kind="linear",
+        axis=2,
+        bounds_error=False,
+        fill_value="extrapolate",
+    )  # then interpolate the background smoothly across
+    bkg_arr[:, :, ~q] = f(
+        time[~q]
+    )  # all times, where we've only been learning with the good quality cadences
 
-    return bkg_arr
+    return np.asfortranarray(np.moveaxis(bkg_arr, -1, 0), dtype=np.float32)
 
 
 def do_background(fn, fast=True, suffix="_bkg"):
@@ -130,25 +144,39 @@ def do_background(fn, fast=True, suffix="_bkg"):
     with fitsio.FITS(fn) as fits:
         hdr = fits[1].read_header()
         tbl = fits[1].read()
-        bkg = calc_2dbkg(fits[2].read(), tbl['QUALITY'], tbl['TSTART'],
-                         fast=fast)
+        bkg = calc_2dbkg(
+            fits[2].read(), tbl["QUALITY"], tbl["TSTART"], fast=fast
+        )
 
     hdr["IS_BKG"] = True
     fitsio.write(new_filename, bkg, header=dict(hdr), clobber=True)
 
 
-def run_sector_camera_chip(base_dir, sector, camera, chip, threads=1,
-                           fast=True, suffix="_bkg"):
-    postdir = os.path.join(base_dir, "s{0:04d}".format(sector),
-                           "{0:d}-{1:d}".format(camera, chip))
+def run_sector_camera_chip(
+    base_dir, sector, camera, chip, threads=1, fast=True, suffix="_bkg"
+):
+    postdir = os.path.join(
+        base_dir, "s{0:04d}".format(sector), "{0:d}-{1:d}".format(camera, chip)
+    )
     pattern = os.path.join(
         postdir,
-        "hlsp_eleanor_tess_ffi_postcard-s{0:04d}-{1:d}-{2:d}-cal-*-*[0-9]_pc.fits"
-        .format(sector, camera, chip))
+        "hlsp_eleanor_tess_ffi_postcard-s{0:04d}-{1:d}-{2:d}-cal-*-*[0-9]_pc.fits".format(
+            sector, camera, chip
+        ),
+    )
 
     # pattern = os.path.join(postdir, "hlsp_eleanor_*.fits")
 
     fns = list(sorted(glob.glob(pattern)))
+    if len(fns) == 0:
+        # Fall back on old file name convention
+        pattern = os.path.join(
+            postdir,
+            "hlsp_eleanor_tess_ffi_postcard-s{0:04d}-{1:d}-{2:d}-cal-*-*[0-9].fits".format(
+                sector, camera, chip
+            ),
+        )
+        fns = list(sorted(glob.glob(pattern)))
 
     # Ensures no postcards have been repeated
     fns = np.unique(fns)
@@ -172,23 +200,36 @@ if __name__ == "__main__":
     import cProfile
 
     parser = argparse.ArgumentParser(
-        description="Create backgrounds from a list of postcards")
-    parser.add_argument('sector', type=int,
-                        help='the sector number')
-    parser.add_argument('base_dir', type=str,
-                        help='the base data directory')
-    parser.add_argument('--camera', type=int, default=None,
-                        help='the camera number')
-    parser.add_argument('--chip', type=int, default=None,
-                        help='the chip number')
-    parser.add_argument('--threads', type=int, default=1,
-                        help='the number of threads to run in parallel')
-    parser.add_argument('--slow', action="store_true",
-                        help='use the old slower version of the interpolation')
-    parser.add_argument('--suffix', type=str, default="_bkg",
-                        help='use the old slower version of the interpolation')
-    parser.add_argument('--profile', action="store_true",
-                        help='profile the code')
+        description="Create backgrounds from a list of postcards"
+    )
+    parser.add_argument("sector", type=int, help="the sector number")
+    parser.add_argument("base_dir", type=str, help="the base data directory")
+    parser.add_argument(
+        "--camera", type=int, default=None, help="the camera number"
+    )
+    parser.add_argument(
+        "--chip", type=int, default=None, help="the chip number"
+    )
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="the number of threads to run in parallel",
+    )
+    parser.add_argument(
+        "--slow",
+        action="store_true",
+        help="use the old slower version of the interpolation",
+    )
+    parser.add_argument(
+        "--suffix",
+        type=str,
+        default="_bkg",
+        help="use the old slower version of the interpolation",
+    )
+    parser.add_argument(
+        "--profile", action="store_true", help="profile the code"
+    )
     args = parser.parse_args()
 
     if args.sector <= 0:
@@ -225,7 +266,13 @@ if __name__ == "__main__":
     for camera in cameras:
         for chip in chips:
             print("Running {0:04d}-{1}-{2}".format(args.sector, camera, chip))
-            run_sector_camera_chip(args.base_dir,
-                                   args.sector, camera, chip,
-                                   threads=args.threads, fast=not args.slow,
-                                   suffix=args.suffix)
+            run_sector_camera_chip(
+                args.base_dir,
+                args.sector,
+                camera,
+                chip,
+                threads=args.threads,
+                fast=not args.slow,
+                suffix=args.suffix,
+            )
+

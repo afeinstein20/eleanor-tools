@@ -12,6 +12,7 @@ import shutil
 import fitsio
 import numpy as np
 from time import strftime
+from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.time import Time
 from astropy.stats import SigmaClip
@@ -39,25 +40,31 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
     fns = list(sorted(fns))
     total_ffis = len(fns)
     # Save the middle header as the primary header
-    middle_fn = fns[total_ffis//2]
+    middle_fn = fns[total_ffis // 2]
+    # with fits.open(middle_fn) as f:
+    #     data = f[1].data
+    #     primary_header = f[1].header
     data, primary_header = fitsio.read(middle_fn, 1, header=True)
 
     # Add the eleanor info to the header
     primary_header.add_record("COMMENT   ***********************")
     primary_header.add_record("COMMENT   *    eleanor INFO     *")
     primary_header.add_record("COMMENT   ***********************")
+    primary_header.add_record(dict(name="AUTHOR", value="Adina D. Feinstein"))
+    primary_header.add_record(dict(name="VERSION", value=eleanor_version))
     primary_header.add_record(
-        dict(name='AUTHOR', value='Adina D. Feinstein'))
+        dict(name="TVERSION", value=eleanor_tools_version)
+    )
     primary_header.add_record(
-        dict(name='VERSION', value=eleanor_version))
+        dict(name="GITHUB", value="https://github.com/afeinstein20/eleanor")
+    )
     primary_header.add_record(
-        dict(name='TVERSION', value=eleanor_tools_version))
-    primary_header.add_record(
-        dict(name='GITHUB',
-             value='https://github.com/afeinstein20/eleanor'))
-    primary_header.add_record(
-        dict(name='CREATED', value=strftime('%Y-%m-%d'),
-             comment='eleanor file creation date (YYY-MM-DD)'))
+        dict(
+            name="CREATED",
+            value=strftime("%Y-%m-%d"),
+            comment="eleanor file creation date (YYY-MM-DD)",
+        )
+    )
 
     # Build the WCS for this middle exposure
     primary_wcs = WCS(primary_header)
@@ -68,11 +75,15 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
     # Set the output filename format
     # Scrapes sector from the file name
     sector = os.path.split(middle_fn)[-1].split("-")[1]
-    info = (sector, primary_header["CAMERA"],
-            primary_header["CCD"], primary_header["IMAGTYPE"].strip())
-    info_str = '{0}-{1}-{2}-{3}'.format(info[0], info[1], info[2], info[3])
+    info = (
+        sector,
+        primary_header["CAMERA"],
+        primary_header["CCD"],
+        primary_header["IMAGTYPE"].strip(),
+    )
+    info_str = "{0}-{1}-{2}-{3}".format(info[0], info[1], info[2], info[3])
 
-    outfn_fmt = "hlsp_eleanor_tess_ffi_postcard-{0}-{{0:04d}}-{{1:04d}}_tess_v1_pc.fits"    
+    outfn_fmt = "hlsp_eleanor_tess_ffi_postcard-{0}-{{0:04d}}-{{1:04d}}_tess_v1_pc.fits"
     outfn_fmt = outfn_fmt.format(info_str)
     outfn_fmt = os.path.join(outdir, outfn_fmt).format
 
@@ -101,36 +112,59 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
     hstep = int(hstep)
 
     # Make a grid of postcard origin coordinates
-    ws = np.arange(0, 2049, wstep)#total_width - width + wstep + 1, wstep)
-    hs = np.arange(44, 2093, hstep)#total_height - height + hstep + 1, hstep)
+    ws = np.arange(0, 2049, wstep)  # total_width - width + wstep + 1, wstep)
+    hs = np.arange(
+        44, 2093, hstep
+    )  # total_height - height + hstep + 1, hstep)
 
     # Compute the total numbers for progress bars
     num_times = len(fns)
     total_num_postcards = len(ws) * len(hs)
 
     # Allocate the memory for the stacked FFIs
-    all_ffis = np.empty((total_width, total_height, len(fns)), dtype=dtype,
-                        order="F")
+    all_ffis = np.empty(
+        (total_width, total_height, len(fns)), dtype=dtype, order="F"
+    )
     if not is_raw:
-        all_errs = np.empty((total_width, total_height, len(fns)), dtype=dtype,
-                            order="F")
+        all_errs = np.empty(
+            (total_width, total_height, len(fns)), dtype=dtype, order="F"
+        )
 
     s = int(sector[1::])
-    metadata_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                'metadata', 's{0:04d}'.format(s))
+    dn = os.path.dirname
+    metadata_dir = os.path.join(
+        dn(dn(os.path.abspath(__file__))), "metadata", "s{0:04d}".format(s)
+    )
     if f.ffiindex is None:
-        ffiindex = np.loadtxt(os.path.join(metadata_dir,
-                                           'cadences_s{0:04d}.txt'.format(s)))
+        ffiindex = np.loadtxt(
+            os.path.join(metadata_dir, "cadences_s{0:04d}.txt".format(s))
+        )
     else:
         ffiindex = f.ffiindex * 1
-    sc_fn = os.path.join(metadata_dir, 'target_s{0:04d}.fits'.format(s))
+    sc_fn = os.path.join(metadata_dir, "target_s{0:04d}.fits".format(s))
 
     # We'll have the same primary HDU for each postcard - this will store the
     # time dependent header info
-    primary_cols = ["TSTART", "TSTOP", "BARYCORR", "DATE-OBS", "DATE-END",
-                    "BKG", "QUALITY", "FFIINDEX"]
-    primary_dtype = [np.float64, np.float64, np.float32, "O", "O", np.float32,
-                     np.int64, np.int64]
+    primary_cols = [
+        "TSTART",
+        "TSTOP",
+        "BARYCORR",
+        "DATE-OBS",
+        "DATE-END",
+        "BKG",
+        "QUALITY",
+        "FFIINDEX",
+    ]
+    primary_dtype = [
+        np.float64,
+        np.float64,
+        np.float32,
+        "S24",
+        "S24",
+        np.float32,
+        np.int64,
+        np.int64,
+    ]
     primary_data = np.empty(len(fns), list(zip(primary_cols, primary_dtype)))
 
     # Make sure that the sector, camera, chip, and dimensions are the
@@ -143,18 +177,17 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
         new_shape = (hdr["NAXIS2"], hdr["NAXIS1"])
         new_info = (sector, hdr["CAMERA"], hdr["CCD"], hdr["IMAGTYPE"].strip())
         if shape != new_shape or new_info != info:
-            raise ValueError("the header info for '{0}' does not match"
-                             .format(name))
+            raise ValueError(
+                "the header info for '{0}' does not match".format(name)
+            )
         info = new_info
 
         # Save the info for the primary HDU
-        for k, dtype in zip(primary_cols[0:len(primary_cols)-3],
-                            primary_dtype[0:len(primary_dtype)-3]):
-            if dtype == "O":
-                primary_data[k][i] = hdr[k].encode("ascii")
-            else:
-                primary_data[k][i] = hdr[k]
-
+        for k, dtype in zip(
+            primary_cols[0 : len(primary_cols) - 3],
+            primary_dtype[0 : len(primary_dtype) - 3],
+        ):
+            primary_data[k][i] = hdr[k]
 
         # Save the data
         all_ffis[:, :, i] = data
@@ -174,131 +207,214 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
 
                 hdr = fitsio.FITSHDR(primary_header)
 
-                if np.shape(all_ffis[w:w+dw, h:h+dh, :]) != (width, height,
-                                                             total_ffis):
-                    if w+dw > wmax:
-                        w = wmax-dw
-                    if h+dh > hmax:
-                        h = hmax-dh
+                if np.shape(all_ffis[w : w + dw, h : h + dh, :]) != (
+                    width,
+                    height,
+                    total_ffis,
+                ):
+                    if w + dw > wmax:
+                        w = wmax - dw
+                    if h + dh > hmax:
+                        h = hmax - dh
 
                 # Shift the reference pixel for the WCS to
                 # account for the postcard location
                 hdr.add_record(
-                    dict(name="CRPIX1", value=crpix_h - h,
-                         comment="X reference pixel"))
+                    dict(
+                        name="CRPIX1",
+                        value=crpix_h - h,
+                        comment="X reference pixel",
+                    )
+                )
                 hdr.add_record(
-                    dict(name="CRPIX2", value=crpix_w - w,
-                         comment="Y reference pixel"))
+                    dict(
+                        name="CRPIX2",
+                        value=crpix_w - w,
+                        comment="Y reference pixel",
+                    )
+                )
 
                 # Shift TSTART and TSTOP in header to first TSTART and
                 # last TSTOP from FFI headers
-                tstart = primary_data['TSTART'][0]
-                tstop = primary_data['TSTOP'][len(primary_data['TSTOP'])-1]
+                tstart = primary_data["TSTART"][0]
+                tstop = primary_data["TSTOP"][len(primary_data["TSTOP"]) - 1]
                 hdr.add_record(
-                    dict(name='TSTART', value=tstart,
-                         comment='observation start time in BTJD'))
+                    dict(
+                        name="TSTART",
+                        value=tstart,
+                        comment="observation start time in BTJD",
+                    )
+                )
                 hdr.add_record(
-                    dict(name='TSTOP', value=tstop,
-                         comment='observation stop time in BTJD'))
+                    dict(
+                        name="TSTOP",
+                        value=tstop,
+                        comment="observation stop time in BTJD",
+                    )
+                )
 
                 # Same thing as done for TSTART and TSTOP for DATE-OBS and
                 # DATE-END
                 hdr.add_record(
-                    dict(name='DATE-OBS',
-                         value=primary_data['DATE-OBS'][0].decode("ascii"),
-                         comment='TSTART as UTC calendar date'))
+                    dict(
+                        name="DATE-OBS",
+                        value=primary_data["DATE-OBS"][0].decode("ascii"),
+                        comment="TSTART as UTC calendar date",
+                    )
+                )
                 hdr.add_record(
-                    dict(name='DATE-END',
-                         value=primary_data['DATE-END'][-1].decode("ascii"),
-                         comment='TSTOP as UTC calendar date'))
+                    dict(
+                        name="DATE-END",
+                        value=primary_data["DATE-END"][-1].decode("ascii"),
+                        comment="TSTOP as UTC calendar date",
+                    )
+                )
 
                 # Adding MJD time for start and stop end time
-                tstart = Time(tstart+2457000, format='jd').mjd
-                tstop = Time(tstop+2457000, format='jd').mjd
+                tstart = Time(tstart + 2457000, format="jd").mjd
+                tstop = Time(tstop + 2457000, format="jd").mjd
                 hdr.add_record(
-                    dict(name='MJD-BEG', value=tstart,
-                         comment='observation start time in MJD'))
+                    dict(
+                        name="MJD-BEG",
+                        value=tstart,
+                        comment="observation start time in MJD",
+                    )
+                )
                 hdr.add_record(
-                    dict(name='MJD-END', value=tstop,
-                         comment='observation end time in MJD'))
+                    dict(
+                        name="MJD-END",
+                        value=tstop,
+                        comment="observation end time in MJD",
+                    )
+                )
 
                 # Save the postcard coordinates in the header
                 hdr.add_record(
-                    dict(name="POSTPIX1", value=h,
-                         comment="origin of postcard axis 1"))
+                    dict(
+                        name="POSTPIX1",
+                        value=h,
+                        comment="origin of postcard axis 1",
+                    )
+                )
                 hdr.add_record(
-                    dict(name="POSTPIX2", value=w,
-                         comment="origin of postcard axis 2"))
+                    dict(
+                        name="POSTPIX2",
+                        value=w,
+                        comment="origin of postcard axis 2",
+                    )
+                )
 
-                xcen = h + 0.5*dh
-                ycen = w + 0.5*dw
+                xcen = h + 0.5 * dh
+                ycen = w + 0.5 * dw
 
                 outfn = outfn_fmt(int(xcen), int(ycen))
                 post_names.append(outfn)
 
                 rd = primary_wcs.all_pix2world(xcen, ycen, 1)
                 hdr.add_record(
-                    dict(name="CEN_X", value=xcen,
-                         comment=("central pixel of postcard in FFI")))
+                    dict(
+                        name="CEN_X",
+                        value=xcen,
+                        comment=("central pixel of postcard in FFI"),
+                    )
+                )
                 hdr.add_record(
-                    dict(name="CEN_Y", value=ycen,
-                         comment=("central pixel of postcard in FFI")))
+                    dict(
+                        name="CEN_Y",
+                        value=ycen,
+                        comment=("central pixel of postcard in FFI"),
+                    )
+                )
                 hdr.add_record(
-                    dict(name="CEN_RA", value=float(rd[0]),
-                         comment="RA of central pixel"))
+                    dict(
+                        name="CEN_RA",
+                        value=float(rd[0]),
+                        comment="RA of central pixel",
+                    )
+                )
                 hdr.add_record(
-                    dict(name="CEN_DEC", value=float(rd[1]),
-                         comment="Dec of central pixel"))
+                    dict(
+                        name="CEN_DEC",
+                        value=float(rd[1]),
+                        comment="Dec of central pixel",
+                    )
+                )
                 hdr.add_record(
-                    dict(name="POST_H", value=float(height),
-                         comment="Height of postcard in pixels"))
+                    dict(
+                        name="POST_H",
+                        value=float(height),
+                        comment="Height of postcard in pixels",
+                    )
+                )
                 hdr.add_record(
-                    dict(name="POST_W", value=float(width),
-                         comment="Width of postcard in pixels"))
+                    dict(
+                        name="POST_W",
+                        value=float(width),
+                        comment="Width of postcard in pixels",
+                    )
+                )
                 hdr.add_record(
-                    dict(name="SECTOR", value=sector[1::],
-                         comment="TESS sector"))
+                    dict(
+                        name="SECTOR", value=sector[1::], comment="TESS sector"
+                    )
+                )
 
-                pixel_data = all_ffis[w:w+dw, h:h+dh, :] + 0.0
+                # Copy so that the data aren't overwritten
+                pixel_data = np.copy(all_ffis[w : w + dw, h : h + dh, :])
 
                 # Adds in quality column for each cadence in primary_data
                 for k in range(len(fns)):
                     b = bkg(pixel_data[:, :, k])
-                    primary_data[k][len(primary_cols)-3] = b
+                    primary_data[k][len(primary_cols) - 3] = b
                     pixel_data[:, :, k] -= b
 
-                    primary_data[k][len(primary_cols)-1] = ffiindex[k]
+                    primary_data[k][len(primary_cols) - 1] = ffiindex[k]
 
                     if i == 0 and j == 0 and k == 0:
                         quality_array = set_quality_flags(
-                            primary_data['TSTART']-primary_data['BARYCORR'],
-                            primary_data['TSTOP']-primary_data['BARYCORR'],
-                            sc_fn, sector[1::], new_info[1], new_info[2],
-                            pm=pm)
-                    primary_data[k][len(primary_cols)-2] = quality_array[k]
+                            primary_data["TSTART"] - primary_data["BARYCORR"],
+                            primary_data["TSTOP"] - primary_data["BARYCORR"],
+                            sc_fn,
+                            sector[1::],
+                            new_info[1],
+                            new_info[2],
+                            pm=pm,
+                        )
+                    primary_data[k][len(primary_cols) - 2] = quality_array[k]
 
                 # Saves the primary hdu
                 fitsio.write(outfn, primary_data, header=hdr, clobber=True)
 
                 # Save the image data
-                fitsio.write(outfn, pixel_data)
+                pixel_data = np.moveaxis(pixel_data, -1, 0).astype(np.float32)
+                fitsio.write(outfn, pixel_data, header=hdr)
 
                 if not is_raw:
-                    fitsio.write(outfn, all_errs[w:w+dw, h:h+dh, :])
+                    pixel_errs = np.moveaxis(
+                        all_errs[w : w + dw, h : h + dh, :], -1, 0
+                    ).astype(np.float32)
+                    fitsio.write(outfn, pixel_errs)
 
                 bar.update()
-    return
 
 
 def run_sector_camera_chip(base_dir, output_dir, sector, camera, chip):
-    pattern = os.path.join(base_dir, "tess", "ffi",
-                           "s{0:04d}".format(sector),
-                           "*", "*",
-                           "{0:d}-{1:d}".format(camera, chip),
-                           "*.fits")
+    pattern = os.path.join(
+        base_dir,
+        "tess",
+        "ffi",
+        "s{0:04d}".format(sector),
+        "*",
+        "*",
+        "{0:d}-{1:d}".format(camera, chip),
+        "*.fits",
+    )
 
-    outdir = os.path.join(output_dir, "s{0:04d}".format(sector),
-                          "{0:d}-{1:d}".format(camera, chip))
+    outdir = os.path.join(
+        output_dir,
+        "s{0:04d}".format(sector),
+        "{0:d}-{1:d}".format(camera, chip),
+    )
     os.makedirs(outdir, exist_ok=True)
     open(os.path.join(outdir, "index.auto"), "w").close()
     open(os.path.join(os.path.dirname(outdir), "index.auto"), "w").close()
@@ -307,12 +423,14 @@ def run_sector_camera_chip(base_dir, output_dir, sector, camera, chip):
     make_postcards(fns, outdir)
 
     # Move the pointing model
-    pointingdir = os.path.join(output_dir, "s{0:04d}".format(sector),
-                               "pointing_model")
+    pointingdir = os.path.join(
+        output_dir, "s{0:04d}".format(sector), "pointing_model"
+    )
     os.makedirs(pointingdir, exist_ok=True)
     open(os.path.join(pointingdir, "index.auto"), "w").close()
     pointingfn = "pointingModel_{0:04d}_{1}-{2}.txt".format(
-        sector, camera, chip)
+        sector, camera, chip
+    )
     shutil.move(pointingfn, os.path.join(pointingdir, pointingfn))
 
 
@@ -320,17 +438,17 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Make postcards from a list of FFIs")
-    parser.add_argument('sector', type=int,
-                        help='the sector number')
-    parser.add_argument('--camera', type=int, default=None,
-                        help='the camera number')
-    parser.add_argument('--chip', type=int, default=None,
-                        help='the chip number')
-    parser.add_argument('base_dir',
-                        help='the base data directory')
-    parser.add_argument('output_dir',
-                        help='the output directory')
+        description="Make postcards from a list of FFIs"
+    )
+    parser.add_argument("sector", type=int, help="the sector number")
+    parser.add_argument(
+        "--camera", type=int, default=None, help="the camera number"
+    )
+    parser.add_argument(
+        "--chip", type=int, default=None, help="the chip number"
+    )
+    parser.add_argument("base_dir", help="the base data directory")
+    parser.add_argument("output_dir", help="the output directory")
     args = parser.parse_args()
 
     if args.camera is None:
@@ -348,5 +466,6 @@ if __name__ == "__main__":
     for camera in cameras:
         for chip in chips:
             print("Running {0:04d}-{1}-{2}".format(args.sector, camera, chip))
-            run_sector_camera_chip(args.base_dir, args.output_dir,
-                                   args.sector, camera, chip)
+            run_sector_camera_chip(
+                args.base_dir, args.output_dir, args.sector, camera, chip
+            )
