@@ -156,8 +156,8 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
         "FFIINDEX",
     ]
     primary_dtype = [
-        np.float32,
-        np.float32,
+        np.float64,
+        np.float64,
         np.float32,
         "S24",
         "S24",
