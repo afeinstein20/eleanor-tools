@@ -67,8 +67,8 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
     primary_header.add_record(
         dict(
             name='CTYPE3',
-            value='CADENCENO',
-            comment='eleanor cadence number'
+            value='3D',
+            comment='irrelevant key'
             )
         )
 
