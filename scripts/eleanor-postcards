@@ -65,12 +65,8 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
         )
     )
     primary_header.add_record(
-        dict(
-            name='CTYPE3',
-            value='3D',
-            comment='irrelevant key'
-            )
-        )
+        dict(name="CTYPE3", value="3D", comment="irrelevant key")
+    )
 
     # Build the WCS for this middle exposure
     primary_wcs = WCS(primary_header)
