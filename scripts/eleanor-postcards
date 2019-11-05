@@ -404,16 +404,15 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
                 bar.update()
 
 
-def run_sector_camera_chip(base_dir, output_dir, sector, camera, chip):
-    pattern = os.path.join(base_dir, "tess", "ffi",
-                           "s{0:04d}".format(sector),
-                           "*", "*",
-                           "{0:d}-{1:d}".format(camera, chip),
-                           "*.fits")
-    # LOCAL
-    fnpattern = f"tess*-s{sector:04d}-{camera:d}-" \
-        f"{chip:d}-*fits"
-    pattern = os.path.join(base_dir, 'sector{0}'.format(sector), fnpattern)
+def run_sector_camera_chip(base_dir, output_dir, sector, camera, chip,
+                           single_dir):
+    if single_dir:
+        fnpattern = f"tess*-s{sector:04d}-{camera:d}-{chip:d}-*fits"
+        pattern = os.path.join(base_dir, fnpattern)
+    else:
+        pattern = os.path.join(base_dir, "tess", "ffi",
+                               "s{0:04d}".format(sector), "*", "*",
+                               "{0:d}-{1:d}".format(camera, chip), "*.fits")
 
     outdir = os.path.join(output_dir, "s{0:04d}".format(sector),
                           "{0:d}-{1:d}".format(camera, chip))
@@ -452,6 +451,10 @@ if __name__ == "__main__":
     )
     parser.add_argument("base_dir", help="the base data directory")
     parser.add_argument("output_dir", help="the output directory")
+    parser.add_argument('--single_dir', action='store_true',
+                        help="if all FFIs are stored directly in the base_dir "
+                             "rather than subdirs split by camera/chip")
+
     args = parser.parse_args()
 
     if args.camera is None:
@@ -466,9 +469,10 @@ if __name__ == "__main__":
         assert int(args.chip) in [1, 2, 3, 4]
         chips = [int(args.chip)]
 
+    single_dir = args.single_dir
+
     for camera in cameras:
         for chip in chips:
             print("Running {0:04d}-{1}-{2}".format(args.sector, camera, chip))
-            run_sector_camera_chip(
-                args.base_dir, args.output_dir, args.sector, camera, chip
-            )
+            run_sector_camera_chip(args.base_dir, args.output_dir, args.sector,
+                                   camera, chip, single_dir)
