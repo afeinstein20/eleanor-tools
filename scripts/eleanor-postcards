@@ -12,7 +12,6 @@ import shutil
 import fitsio
 import numpy as np
 from time import strftime
-from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.time import Time
 from astropy.stats import SigmaClip
@@ -69,6 +68,13 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
     # Build the WCS for this middle exposure
     primary_wcs = WCS(primary_header)
 
+    # Add a useless column for the postcard WCS
+    primary_header.add_record(
+        dict(
+            name="CTYPE3", value="CADENCENO", comment="ELEANOR cadence number"
+        )
+    )
+
     # Is this a raw frame? If so, there won't be any error information
     is_raw = primary_header["IMAGTYPE"].strip() == "uncal"
 
@@ -83,7 +89,7 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
     )
     info_str = "{0}-{1}-{2}-{3}".format(info[0], info[1], info[2], info[3])
 
-    outfn_fmt = "hlsp_eleanor_tess_ffi_postcard-{0}-{{0:04d}}-{{1:04d}}_tess_v1_pc.fits"
+    outfn_fmt = "hlsp_eleanor_tess_ffi_postcard-{0}-{{0:04d}}-{{1:04d}}_tess_v2_pc.fits"
     outfn_fmt = outfn_fmt.format(info_str)
     outfn_fmt = os.path.join(outdir, outfn_fmt).format
 

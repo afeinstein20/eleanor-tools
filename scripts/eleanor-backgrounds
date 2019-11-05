@@ -149,7 +149,9 @@ def do_background(fn, fast=True, suffix="_bkg"):
         )
 
     hdr["IS_BKG"] = True
-    fitsio.write(new_filename, bkg, header=dict(hdr), clobber=True)
+    with fitsio.FITS(new_filename, "rw", clobber=True) as fits:
+        fits.write(None)
+        fits.write(bkg, header=dict(hdr))
 
 
 def run_sector_camera_chip(
@@ -275,4 +277,3 @@ if __name__ == "__main__":
                 fast=not args.slow,
                 suffix=args.suffix,
             )
-
