@@ -26,8 +26,7 @@ from eleanor_tools import __version__ as eleanor_tools_version
 def bkg(flux, sigma=2.5):
     # Returns background for a single cadence. Default sigma=2.5
     sigma_clip = SigmaClip(sigma=sigma)
-    bkg = MMMBackground(sigma_clip=sigma_clip)
-    return bkg.calc_background(flux)
+    return MMMBackground(sigma_clip=sigma_clip).calc_background(flux)
 
 
 def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
@@ -191,8 +190,8 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
 
         # Save the info for the primary HDU
         for k, dtype in zip(
-            primary_cols[0 : len(primary_cols) - 3],
-            primary_dtype[0 : len(primary_dtype) - 3],
+            primary_cols[0: len(primary_cols) - 3],
+            primary_dtype[0: len(primary_dtype) - 3],
         ):
             primary_data[k][i] = hdr[k]
 
@@ -214,7 +213,7 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
 
                 hdr = fitsio.FITSHDR(primary_header)
 
-                if np.shape(all_ffis[w : w + dw, h : h + dh, :]) != (
+                if np.shape(all_ffis[w: w + dw, h: h + dh, :]) != (
                     width,
                     height,
                     total_ffis,
@@ -322,14 +321,14 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
                     dict(
                         name="CEN_X",
                         value=xcen,
-                        comment=("central pixel of postcard in FFI"),
+                        comment="central pixel of postcard in FFI",
                     )
                 )
                 hdr.add_record(
                     dict(
                         name="CEN_Y",
                         value=ycen,
-                        comment=("central pixel of postcard in FFI"),
+                        comment="central pixel of postcard in FFI",
                     )
                 )
                 hdr.add_record(
@@ -367,7 +366,7 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
                 )
 
                 # Copy so that the data aren't overwritten
-                pixel_data = np.copy(all_ffis[w : w + dw, h : h + dh, :])
+                pixel_data = np.copy(all_ffis[w: w + dw, h: h + dh, :])
 
                 # Adds in quality column for each cadence in primary_data
                 for k in range(len(fns)):
@@ -398,7 +397,7 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
 
                 if not is_raw:
                     pixel_errs = np.moveaxis(
-                        all_errs[w : w + dw, h : h + dh, :], -1, 0
+                        all_errs[w: w + dw, h: h + dh, :], -1, 0
                     ).astype(np.float32)
                     fitsio.write(outfn, pixel_errs)
 
