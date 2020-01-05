@@ -11,6 +11,7 @@ import tqdm
 import shutil
 import fitsio
 import numpy as np
+import pkg_resources
 from time import strftime
 from astropy.wcs import WCS
 from astropy.time import Time
@@ -139,7 +140,9 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
     s = int(sector[1::])
     dn = os.path.dirname
     metadata_dir = os.path.join(
-        dn(dn(os.path.abspath(__file__))), "metadata", "s{0:04d}".format(s)
+        dn(pkg_resources.resource_filename("eleanor", "")),
+        "metadata",
+        "s{0:04d}".format(s),
     )
     if f.ffiindex is None:
         ffiindex = np.loadtxt(
