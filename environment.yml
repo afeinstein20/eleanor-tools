@@ -20,3 +20,5 @@ dependencies:
 - pip:
   - https://github.com/afeinstein20/eleanor/archive/master.zip
   - -e .
+  - black
+  - flake8
