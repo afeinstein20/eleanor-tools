@@ -16,3 +16,4 @@ dist
 *.cppimporthash
 .rendered.*
 *.egg-info
+env

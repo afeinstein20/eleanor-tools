@@ -1,0 +1,22 @@
+name: eleanor-tools
+channels:
+- defaults
+- astropy
+dependencies:
+- python=3.7
+- numpy
+- astropy
+- photutils
+- pybind11
+- tqdm
+- astroquery
+- bokeh
+- pandas
+- matplotlib
+- scipy
+- setuptools>=41.0.0
+- ipython
+- pip
+- pip:
+  - https://github.com/afeinstein20/eleanor/archive/master.zip
+  - -e .
