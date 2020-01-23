@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import division, print_function
+
+__all__ = ["make_light_curves"]
+
+import os
+import eleanor
+
+FMT = "hlsp_eleanor_tess_ffi_tic{0}_s{1:04d}_tess_v2_lc.fits"
+
+
+def make_light_curves(directory, sector, camera, ccd, **kwargs):
+    sector_path = "s{0:04d}".format(sector)
+    post_dir = os.path.join(
+        directory,
+        "tess",
+        "postcards",
+        sector_path,
+        "{0}-{1}".format(camera, ccd),
+    )
+    pm_dir = os.path.join(post_dir, "pointing_model")
+    print("star")
+    star = eleanor.Source(
+        sector=sector, local=True, post_dir=post_dir, pm_dir=pm_dir, **kwargs
+    )
+    print("data")
+    data = eleanor.TargetData(
+        star, do_pca=True, do_psf=False, height=13, bkg_size=21
+    )
+
+    tic_id = data.source_info.tic
+    tic_id_str = "{0:016d}".format(tic_id)
+    lc_dir = os.path.join(
+        directory,
+        "light_curves",
+        sector_path,
+        tic_id_str[:4],
+        tic_id_str[4:8],
+        tic_id_str[8:12],
+        tic_id_str[12:14] + "00",
+    )
+    print(lc_dir)
+    assert 0
+
+    os.makedirs(lc_dir, exist_ok=True)
+
+    output_fn = FMT.format(tic_id, data.source_info.sector)
+    data.save(directory=lc_dir, output_fn=output_fn)
+
+
+if __name__ == "__main__":
+    make_light_curves(
+        "/mnt/ceph/users/dforeman/tess/ffis",
+        1,
+        1,
+        1,
+        coords=(319.398499450914, -41.2855589300234),
+    )
