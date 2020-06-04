@@ -19,7 +19,7 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 
 FMT = "hlsp_eleanor_tess_ffi_tic{0}_s{1:04d}_tess_v1_lc.fits"
-
+crowding_limit = 14.0
 
 def make_light_curves(directory, sector, camera, ccd, **kwargs):
     sector_path = "s{0:04d}".format(sector)
@@ -34,7 +34,7 @@ def make_light_curves(directory, sector, camera, ccd, **kwargs):
     print(star.pointing)
     star.tess_mag = tess_mag
 
-    if star.tess_mag < 14:
+    if star.tess_mag < crowding_limit:
         crowded_field = False
     else:
         crowded_field = True
