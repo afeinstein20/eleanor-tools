@@ -32,3 +32,11 @@ To generate backgrounds:
 ```bash
 scripts/eleanor-backgrounds $SECTOR_NUMBER $FFI_PATH/tess/postcards
 ```
+
+To generate light curves:
+
+```bash
+scripts/eleanor-light-curves $SECTOR_NUMBER $CAMERA_NUMBER $CHIP_NUMBER $FFI_PATH /path/to/target/list.txt
+```
+
+where `/path/to/target/list.txt` is a whitespace separated file with the columns: `TIC RAJ2000 DEJ2000 GAIA Tmag`.

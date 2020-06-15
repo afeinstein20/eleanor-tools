@@ -15,23 +15,33 @@ socket.socket = guard
 
 import os
 import eleanor
+import logging
+import warnings
+import astropy.wcs
+import numpy as np
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
 FMT = "hlsp_eleanor_tess_ffi_tic{0}_s{1:04d}_tess_v1_lc.fits"
 crowding_limit = 14.0
 
-def make_light_curves(directory, sector, camera, ccd, **kwargs):
+
+# Hide the eleanor warnings
+logging.getLogger("astropy.io.fits.card").setLevel(logging.ERROR)
+logging.getLogger("astropy.wcs.wcs").setLevel(logging.ERROR)
+logging.getLogger("photutils.aperture.core").setLevel(logging.ERROR)
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=astropy.wcs.FITSFixedWarning)
+
+
+def make_light_curves(directory, sector, camera, ccd, tess_mag, **kwargs):
     sector_path = "s{0:04d}".format(sector)
     post_dir = os.path.join(directory, "tess", "postcards", sector_path)
     pm_dir = os.path.join(post_dir, "pointing_model")
-    print(pm_dir)
     post_dir = os.path.join(post_dir, "{0}-{1}".format(camera, ccd))
     star = eleanor.Source(
         sector=sector, local=True, post_dir=post_dir, pm_dir=pm_dir, **kwargs
     )
-    print(star.pm_dir)
-    print(star.pointing)
     star.tess_mag = tess_mag
 
     if star.tess_mag < crowding_limit:
@@ -39,8 +49,8 @@ def make_light_curves(directory, sector, camera, ccd, **kwargs):
     else:
         crowded_field = True
     data = eleanor.TargetData(
-        star, do_pca=True, do_psf=False, crowded_field = crowded_field
-    )  # , height=13, bkg_size=21,)
+        star, do_pca=True, do_psf=False, crowded_field=crowded_field,
+    )
 
     tic_id = data.source_info.tic
     tic_id_str = "{0:016d}".format(tic_id)
@@ -61,14 +71,58 @@ def make_light_curves(directory, sector, camera, ccd, **kwargs):
     data.save(directory=lc_dir, output_fn=output_fn)
 
 
-if __name__ == "__main__":
-    make_light_curves(
-        "/mnt/ceph/users/dforeman/tess/ffis",
-        1,
-        4,
-        1,
-        coords=SkyCoord(ra=68.959732, dec=-64.02704, unit=(u.deg, u.deg)),
-        tic=38846515,
-        gaia=0,
-        tess_mag = 10.1
+def process_row(directory, sector, camera, ccd, row, **kwargs):
+    tess_mag = row.Tmag
+    kwargs["tic"] = int(row.TIC)
+    kwargs["gaia"] = row.GAIA if row.GAIA and np.isfinite(row.GAIA) else 0
+    kwargs["coords"] = SkyCoord(
+        ra=row.RAJ2000, dec=row.DEJ2000, unit=(u.deg, u.deg)
     )
+    try:
+        make_light_curves(directory, sector, camera, ccd, tess_mag, **kwargs)
+    except eleanor.utils.SearchError:
+        pass
+
+
+if __name__ == "__main__":
+    import tqdm
+    import argparse
+    import pandas as pd
+    from functools import partial
+    from multiprocessing import Pool
+
+    # base_dir: /mnt/ceph/users/dforeman/tess/ffis
+
+    parser = argparse.ArgumentParser(description="Make light curves")
+    parser.add_argument("sector", type=int, help="the sector number")
+    parser.add_argument("camera", type=int, help="the camera number")
+    parser.add_argument("chip", type=int, help="the chip number")
+    parser.add_argument("base_dir", type=str, help="the base data directory")
+    parser.add_argument(
+        "target_list",
+        type=str,
+        help="a whitespace separated file with the target list",
+    )
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="the number of threads to run in parallel",
+    )
+    args = parser.parse_args()
+
+    targets = pd.read_csv(args.target_list, delim_whitespace=True)
+    targets = targets.sample(frac=0.001)
+    func = partial(
+        process_row, args.base_dir, args.sector, args.camera, args.chip
+    )
+
+    with Pool(args.threads) as pool:
+        list(
+            tqdm.tqdm(
+                pool.imap_unordered(
+                    func, (row for _, row in targets.iterrows())
+                ),
+                total=len(targets),
+            )
+        )
