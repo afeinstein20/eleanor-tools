@@ -51,9 +51,10 @@ def calc_2dbkg(flux, qual, time, fast=True):
 
     q = qual == 0
 
+    nonzero = (flux.sum(axis=(0,1)) > 0)
     # build a single frame in shape of detector.
     # This was once the median image, not sure why it was changed
-    med = np.percentile(flux[:, :, :], 1, axis=(2))
+    med = np.percentile(flux[:, :, nonzero], 1, axis=(2))
 
     # subtract off median to remove stable background emission, which is
     # especially apparent in corners
