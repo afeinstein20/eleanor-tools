@@ -39,11 +39,21 @@ def make_postcards(fns, outdir, width=104, height=148, wstep=None, hstep=None):
     # the ETE-6 test data
     fns = list(sorted(fns))
     total_ffis = len(fns)
-    # Save the middle header as the primary header
-    middle_fn = fns[total_ffis // 2]
-    # with fits.open(middle_fn) as f:
-    #     data = f[1].data
-    #     primary_header = f[1].header
+    
+    # Save the 1/4 way through header as the primary header, if it's good
+    index = total_ffis // 4
+    good = False
+    while not good:
+        middle_fn = fns[index]
+        data, primary_header = fitsio.read(middle_fn, 1, header=True)
+        # make sure this cadence isn't saturated, part of a reaction wheel event,
+        # etc, which all mean 'CRPIX1' won't be in the header and the build will fail.
+        # if it's bad, just keep advancing through until we get a good one.
+        if 'CRPIX1' in primary_header.keys() and primary_header['DQUALITY'] == 0:
+            good = True
+        else:
+            index += 1
+
     data, primary_header = fitsio.read(middle_fn, 1, header=True)
 
     # Add the eleanor info to the header
